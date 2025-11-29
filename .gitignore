@@ -1,0 +1,66 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+.VENV/
+
+# Django
+*.log
+staticfiles/
+media/
+local_settings.py
+
+# SQLite database
+db.sqlite3
+db.sqlite3-journal
+
+# Migrations (optional — keep only if you want fresh migrations)
+# Remove the ! if you want to commit migrations
+**/migrations/
+!**/migrations/__init__.py
+
+# VSCode
+.vscode/
+
+# IDEs
+.idea/
+*.iml
+
+# Environment variables
+.env
+.env.*
+*.env
+
+# Cache
+*.cache
+*.mo
+*.pot
+
+# Django debug files
+debug.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# pytest / test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+build/
