@@ -12,7 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+from decouple import config
 from django.conf import settings
+
+KAFKA_PORT = config("KAFKA_PORT")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +51,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "chat.middleware.KafkaConsumerBootMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -160,5 +164,51 @@ CHANNEL_LAYERS = {
         "CONFIG": {
             "hosts": [("127.0.0.1", 6379)],
         },
+    },
+}
+
+CHAT_KAFKA_CONSUMER_CONFIG = {
+    "topic": config("KAFKA_TOPIC", default="chat-messages"),
+    "group_id": config("KAFKA_CONSUMER_GROUP_ID", default="chat-consumer-group"),
+    "bootstrap_servers": config("KAFKA_BOOTSTRAP_SERVERS", default=f"localhost:{KAFKA_PORT}"),
+    "batch_size": config("KAFKA_CONSUMER_BATCH_SIZE", cast=int, default=100),
+    "max_interval_seconds": config("KAFKA_CONSUMER_MAX_INTERVAL_SECONDS", cast=float, default=60.0),
+    "poll_timeout": config("KAFKA_CONSUMER_POLL_TIMEOUT", cast=float, default=1.0),
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} ({process}) {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "chat.helpers.kafka_consumer": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "confluent_kafka": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
     },
 }

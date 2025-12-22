@@ -48,7 +48,6 @@ class ConversationMessage(models.Model):
         on_delete=models.CASCADE,
         related_name="sent_messages"
     )
-    # allow content to be null/blank for non-text messages (e.g. IMAGE/FILE)
     content = models.TextField(blank=True, null=True)
     message_type = models.CharField(
         choices=MessageType.choices,
@@ -87,7 +86,6 @@ class ConversationMessage(models.Model):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         if is_new and self.conversation_id:
-            # set to now() explicitly so updated_at moves forward
             Conversation.objects.filter(pk=self.conversation_id).update(updated_at=timezone.now())
 
 
