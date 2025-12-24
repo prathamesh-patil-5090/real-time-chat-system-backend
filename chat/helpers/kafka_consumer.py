@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from confluent_kafka import Consumer, KafkaError, KafkaException
 from django.db import transaction
 
-from app.settings import KAFKA_PORT
+from app.settings import  KAFKA_SERVER_URL
 from chat.models import ConversationMessage
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class KafkaBatchConsumer:
             self,
             topic: str = "chat-messages",
             group_id: str = "chat-consumer-group",
-            bootstrap_servers: str = f"localhost:{KAFKA_PORT}",
+            bootstrap_servers: str = f"{KAFKA_SERVER_URL}",
             batch_size: int = 100,
             max_interval_seconds: float = 60.0,
             poll_timeout: float = 1.0,
@@ -233,7 +233,7 @@ def start_background_consumer(
     *,
     topic: str = "chat-messages",
     group_id: str = "chat-consumer-group",
-    bootstrap_servers: str = f"localhost:{KAFKA_PORT}",
+    bootstrap_servers: str = f"{KAFKA_SERVER_URL}",
     batch_size: int = 100,
     max_interval_seconds: float = 60.0,
     poll_timeout: float = 1.0,

@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional
 
 from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
 
-from app.settings import KAFKA_PORT
+from app.settings import  KAFKA_SERVER_URL
 
 logger = logging.getLogger(__name__)
 
 # NOTE: Consider moving config to Django settings / env variables
-_KAFKA_CONFIG = {"bootstrap.servers": f"localhost:{KAFKA_PORT}"}
+_KAFKA_CONFIG = {"bootstrap.servers": f"{KAFKA_SERVER_URL}"}
 
 _producer = Producer(_KAFKA_CONFIG)
 _DEFAULT_TOPIC = "chat-messages"

@@ -15,7 +15,7 @@ from pathlib import Path
 from decouple import config
 from django.conf import settings
 
-KAFKA_PORT = config("KAFKA_PORT")
+KAFKA_SERVER_URL = config("KAFKA_SERVER_URL")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -170,7 +170,7 @@ CHANNEL_LAYERS = {
 CHAT_KAFKA_CONSUMER_CONFIG = {
     "topic": config("KAFKA_TOPIC", default="chat-messages"),
     "group_id": config("KAFKA_CONSUMER_GROUP_ID", default="chat-consumer-group"),
-    "bootstrap_servers": config("KAFKA_BOOTSTRAP_SERVERS", default=f"localhost:{KAFKA_PORT}"),
+    "bootstrap_servers": config("KAFKA_BOOTSTRAP_SERVERS", default=f"{KAFKA_SERVER_URL}"),
     "batch_size": config("KAFKA_CONSUMER_BATCH_SIZE", cast=int, default=100),
     "max_interval_seconds": config("KAFKA_CONSUMER_MAX_INTERVAL_SECONDS", cast=float, default=60.0),
     "poll_timeout": config("KAFKA_CONSUMER_POLL_TIMEOUT", cast=float, default=1.0),
