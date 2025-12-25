@@ -1,3 +1,4 @@
+from authentication.serializers import UserSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -27,7 +28,7 @@ class SetPagination(PageNumberPagination):
 # - validates reply_to belongs to the same conversation
 #
 class ConversationMessageSerializer(serializers.ModelSerializer):
-    sender = serializers.PrimaryKeyRelatedField(read_only=True)
+    sender = UserSerializer(read_only=True)
     conversation = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
@@ -107,7 +108,7 @@ class ConversationMessageSerializer(serializers.ModelSerializer):
 #
 class ConversationParticipantsSerializer(serializers.ModelSerializer):
     conversation = serializers.PrimaryKeyRelatedField(read_only=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = ConversationParticipant
@@ -198,7 +199,7 @@ class ConversationParticipantsSerializer(serializers.ModelSerializer):
 # - validate that the request.user is a participant of the message's conversation
 #
 class MessageReadReceiptsSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = MessageReadReceipt

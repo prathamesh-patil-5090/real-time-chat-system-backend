@@ -1,13 +1,6 @@
 from typing import List, Optional
 from uuid import uuid4
 
-from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.response import Response
-
 from authentication.authentication import CookieJWTAuthentication
 from chat.helpers.kafka_producer import fetch_messages_from_kafka, produce_message
 from chat.models import (
@@ -24,6 +17,12 @@ from chat.serializers import (
     MessageReadReceiptsSerializer,
     SetPagination,
 )
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.response import Response
 
 User = get_user_model()
 
