@@ -3,6 +3,7 @@ from ssl import get_server_certificate
 from django.conf import settings
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_400_BAD_REQUEST
@@ -148,4 +149,22 @@ class ProfileViewSet(viewsets.ModelViewSet):
         return Response({
             "message": "Profile fetched successfully",
             "user": profile
+        }, status=HTTP_200_OK)
+
+class ProfileHolderViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        request_id = request.quest_params.get("requestId")
+        if not request_id:
+            return Response(
+                        {"detail": "requestId query parameter is required."},
+                        status=HTTP_400_BAD_REQUEST
+                    )
+        user = get_object_or_404(User, pk=request_id)
+        return Response({
+            "message": "Holder Profile fetched successfully",
+            "user": self.get_serializer(user).data
         }, status=HTTP_200_OK)

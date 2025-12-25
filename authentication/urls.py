@@ -9,6 +9,7 @@ router.register(r"login", views.LoginViewSet, basename="login")
 router.register(r"register", views.RegisterViewSet, basename="register")
 router.register(r"logout", views.LogoutViewSet, basename="logout")
 router.register(r"profile", views.ProfileViewSet, basename="profile")
+router.register(r"user", views.ProfileHolderViewSet, basename="profile-holder")
 router.register(r"refresh", views.RefreshViewSet, basename="refresh")
 
 urlpatterns = [
