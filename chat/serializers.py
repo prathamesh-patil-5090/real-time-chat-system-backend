@@ -258,9 +258,14 @@ class MessageReadReceiptsSerializer(serializers.ModelSerializer):
 #
 # Conversation serializer
 # - created_by is read-only and automatically set from request in create()
+# - includes latest_message, display_name, other_participant, and unread_count
 #
 class ConversationSerializer(serializers.ModelSerializer):
     created_by = serializers.PrimaryKeyRelatedField(read_only=True)
+    latest_message = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
+    other_participant = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
@@ -268,7 +273,11 @@ class ConversationSerializer(serializers.ModelSerializer):
             'id',
             'is_group',
             'name',
+            'display_name',
+            'other_participant',
             'created_by',
+            'latest_message',
+            'unread_count',
             'created_at',
             'updated_at'
         ]
@@ -276,8 +285,112 @@ class ConversationSerializer(serializers.ModelSerializer):
             'id',
             'created_by',
             'created_at',
-            'updated_at'
+            'updated_at',
+            'display_name',
+            'other_participant',
+            'latest_message',
+            'unread_count'
         ]
+
+    def get_latest_message(self, obj):
+        """
+        Return the latest message from DB.
+        Note: Kafka messages should be handled in the view layer.
+        """
+        latest = obj.messages.order_by('-created_at').first()
+        if latest:
+            return {
+                'id': latest.id,
+                'content': latest.content,
+                'message_type': latest.message_type,
+                'sender_id': latest.sender_id,
+                'sender_name': f"{latest.sender.first_name} {latest.sender.last_name}".strip() or latest.sender.username,
+                'created_at': latest.created_at,
+                'is_deleted': latest.is_deleted
+            }
+        return None
+
+    def get_display_name(self, obj):
+        """
+        For one-on-one conversations, return the other participant's name.
+        For group conversations, return the conversation name.
+        """
+        if obj.is_group:
+            return obj.name or f"Group {obj.id}"
+        
+        # For one-on-one, get the other participant
+        request = self.context.get('request')
+        if request and request.user:
+            other_participant = obj.participants.exclude(user=request.user).select_related('user').first()
+            if other_participant:
+                user = other_participant.user
+                return f"{user.first_name} {user.last_name}".strip() or user.username
+        
+        return obj.name or f"Conversation {obj.id}"
+
+    def get_other_participant(self, obj):
+        """
+        For one-on-one conversations, return the other participant's info.
+        For group conversations, return None.
+        """
+        if obj.is_group:
+            return None
+        
+        request = self.context.get('request')
+        if request and request.user:
+            other_participant = obj.participants.exclude(user=request.user).select_related('user').first()
+            if other_participant:
+                user = other_participant.user
+                return {
+                    'id': user.id,
+                    'username': user.username,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'email': user.email
+                }
+        
+        return None
+
+    def get_unread_count(self, obj):
+        """
+        Count unread messages for the current user.
+        A message is unread if it's after the user's last_read_message.
+        """
+        request = self.context.get('request')
+        if not request or not request.user:
+            return 0
+        
+        participant = obj.participants.filter(user=request.user).first()
+        if not participant:
+            return 0
+        
+        if participant.last_read_message:
+            # Count messages after the last read message
+            unread = obj.messages.filter(
+                created_at__gt=participant.last_read_message.created_at
+            ).exclude(sender=request.user).count()
+            return unread
+        else:
+            # No message has been read yet, count all messages except user's own
+            return obj.messages.exclude(sender=request.user).count()
+
+    def validate(self, attrs):
+        """
+        Validate conversation data:
+        - For personal chats (is_group=False), name is optional and will be ignored
+        - For group chats (is_group=True), name is required
+        """
+        is_group = attrs.get('is_group', False)
+        name = attrs.get('name')
+        
+        if is_group and not name:
+            raise ValidationError({"name": "Group conversations must have a name."})
+        
+        # For personal chats, clear the name (it will be derived from participants)
+        if not is_group:
+            attrs['name'] = None
+        
+        return attrs
 
     def create(self, validated_data):
         """
@@ -293,8 +406,14 @@ class ConversationSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """
         Prevent changing created_by; allow other fields.
+        For personal chats, ignore name updates.
         """
         validated_data.pop('created_by', None)
+        
+        # For personal chats, don't allow name updates
+        if not instance.is_group:
+            validated_data.pop('name', None)
+        
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()

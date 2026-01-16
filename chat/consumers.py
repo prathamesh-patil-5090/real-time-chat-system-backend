@@ -1,10 +1,4 @@
-import json
-from typing import Optional
-from uuid import uuid4
 
-from channels.generic.websocket import AsyncWebsocketConsumer
-
-from chat.helpers.kafka_producer import produce_message
 
 """
 WebSocket consumer for chat messages.
@@ -19,9 +13,26 @@ Behavior:
   `self.scope['user']` we attach their id, otherwise the client may supply `sender_id`.
 """
 
+
+import json
+from typing import Optional
+from uuid import uuid4
+
+from channels.generic.websocket import AsyncWebsocketConsumer
+from chat.helpers.kafka_producer import produce_message
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         # conversation_id is captured from the websocket URL route (see routing.py)
+        user = self.scope.get("user")
+        # Require authenticated user to connect (recommended)
+        if user is None or not getattr(user, "is_authenticated", False):
+            # Close with a specific code for unauthorized (4401 is custom here)
+            await self.close(code=4401)
+            return
+
+        self.sender_id = int(getattr(user, "id", None))
         self.conversation_id = self.scope["url_route"]["kwargs"]["conversation_id"]
         self.room_group_name = f"chat_{self.conversation_id}"
 
@@ -30,7 +41,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave the room group
+        # Leave the room group; don't re-check auth here (connection was accepted earlier)
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data: str):
@@ -39,14 +50,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         {
             "message": "Hello",
             "message_type": "TEXT",    # optional, default "TEXT"
-            "sender_id": 123,          # optional if self.scope['user'] exists
             "temp_id": "uuid-..."      # optional client-provided temporary id
         }
         """
+        # Defensive check: ensure we have a sender_id resolved in connect
+        if not hasattr(self, "sender_id") or self.sender_id is None:
+            await self.send(text_data=json.dumps({"error": "authentication_required"}))
+            await self.close(code=4401)
+            return
+
         try:
             payload = json.loads(text_data)
         except (TypeError, ValueError):
-            # Invalid JSON; ignore or optionally send error back
+            # Invalid JSON; reply and ignore
             await self.send(text_data=json.dumps({"error": "invalid_json"}))
             return
 
@@ -55,18 +71,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"error": "message_required"}))
             return
 
-        # Prefer authenticated user id if present in scope, fall back to payload sender_id
-        user = self.scope.get("user")
-        sender_id: Optional[int] = None
-        if user is not None and hasattr(user, "is_authenticated") and user.is_authenticated:
-            try:
-                sender_id = int(getattr(user, "id", None))
-            except Exception:
-                sender_id = None
-
-        if sender_id is None:
-            # fallback to any sender_id client included
-            sender_id = payload.get("sender_id")
+        # Use the authenticated sender id only. Do NOT accept sender_id from client.
+        sender_id: Optional[int] = self.sender_id
 
         temp_id = payload.get("temp_id") or str(uuid4())
         kafka_payload = {
@@ -78,7 +84,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "reply_to_id": None,
         }
 
-        # Produce to Kafka (fire-and-forget; on_delivery is handled inside producer helper)
+        # Produce to Kafka (fire-and-forget)
         try:
             produce_message(self.conversation_id, kafka_payload, synchronous=False)
         except Exception as exc:
@@ -86,11 +92,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         # Broadcast to the group so all connected clients receive the new message immediately.
-        # Include temp_id so clients can reconcile optimistic local messages with server ack.
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                "type": "chat.message",  # this maps to `chat_message` handler below
+                "type": "chat.message",
                 "message": message,
                 "sender_id": sender_id,
                 "temp_id": temp_id,

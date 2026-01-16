@@ -13,7 +13,6 @@ from datetime import timedelta
 from pathlib import Path
 
 from decouple import config
-from django.conf import settings
 
 KAFKA_SERVER_URL = config("KAFKA_SERVER_URL")
 
@@ -30,7 +29,7 @@ SECRET_KEY = "django-insecure-&*3w(pge#erk3kzz9g+5$e5g^*2z2(m-a(ckvkre&5it5ue@r5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # Allow all hosts for development (use specific hosts in production)
 
 
 # Application definition
@@ -43,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",  # Add CORS headers support
     "authentication.apps.AuthenticationConfig",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -52,6 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "chat.middleware.KafkaConsumerBootMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # Add CORS middleware (should be high up)
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -156,14 +157,11 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 
     "ALGORITHM": "HS512",
-    "SIGNING_KEY": settings.SECRET_KEY,
+    "SIGNING_KEY": SECRET_KEY,
 }
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
-        },
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
 
@@ -175,6 +173,22 @@ CHAT_KAFKA_CONSUMER_CONFIG = {
     "max_interval_seconds": config("KAFKA_CONSUMER_MAX_INTERVAL_SECONDS", cast=float, default=60.0),
     "poll_timeout": config("KAFKA_CONSUMER_POLL_TIMEOUT", cast=float, default=1.0),
 }
+
+# CORS settings for development
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins in development
+CORS_ALLOW_CREDENTIALS = True  # Allow cookies to be sent
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8081",
+    "http://192.168.1.104:8081",
+    "http://10.0.2.2:8081",
+]
+
+# CSRF settings for mobile app
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8081",
+    "http://192.168.1.104:8081",
+    "http://10.0.2.2:8081",
+]
 
 LOGGING = {
     "version": 1,

@@ -15,7 +15,7 @@ from django.utils.deprecation import MiddlewareMixin
 
 from app.settings import  KAFKA_SERVER_URL
 from chat.helpers.kafka_consumer import ensure_background_consumer_running
-
+    
 
 class KafkaConsumerBootMiddleware(MiddlewareMixin):
     _consumer_pid: Optional[int] = None

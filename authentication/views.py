@@ -1,6 +1,8 @@
+from numbers import Number
 from ssl import get_server_certificate
 
 from django.conf import settings
+from django.db.models import Q
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -167,4 +169,61 @@ class ProfileHolderViewSet(viewsets.ModelViewSet):
         return Response({
             "message": "Holder Profile fetched successfully",
             "user": self.get_serializer(user).data
+        }, status=HTTP_200_OK)
+
+
+class SearchProfileViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()  # Fixed typo: was "querset"
+
+    def list(self, request, *args, **kwargs):
+        search_params = request.query_params.get("search_params")
+
+        if not search_params:
+            return Response(
+                {"detail": "search_params query parameter is required."},
+                status=HTTP_400_BAD_REQUEST
+            )
+
+        search_params = search_params.strip()
+
+        query = Q(username__icontains=search_params) | \
+                Q(first_name__icontains=search_params) | \
+                Q(last_name__icontains=search_params) | \
+                Q(email__icontains=search_params)
+
+        if search_params.isdigit():
+            query |= Q(id=int(search_params))
+
+        users = User.objects.filter(query).exclude(id=request.user.id).distinct()
+
+        if not users.exists():
+            return Response(
+                {"detail": "No users found matching the search criteria."},
+                status=HTTP_400_BAD_REQUEST
+            )
+
+        return Response({
+            "message": "Users fetched successfully",
+            "users": self.get_serializer(users, many=True).data,
+            "count": users.count()
+        }, status=HTTP_200_OK)
+
+
+class AllUsersViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = User.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        """
+        Return all users on the platform with pagination support.
+        """
+        users = User.objects.all().order_by('id')
+
+        return Response({
+            "message": "All users fetched successfully",
+            "users": self.get_serializer(users, many=True).data,
+            "count": users.count()
         }, status=HTTP_200_OK)
