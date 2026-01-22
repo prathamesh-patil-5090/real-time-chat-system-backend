@@ -4,12 +4,13 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from confluent_kafka import Consumer, KafkaError, KafkaException
 from django.db import transaction
 
-from app.settings import  KAFKA_SERVER_URL
+from app.settings import BASE_DIR, KAFKA_SERVER_URL
 from chat.models import ConversationMessage
 
 logger = logging.getLogger(__name__)
@@ -38,11 +39,18 @@ class KafkaBatchConsumer:
             self._stop_event = threading.Event()
             self._last_flush_time = time.time()
 
+            # SSL certificate paths
+            cert_dir = BASE_DIR / "certificates"
+
             conf = {
                 "bootstrap.servers": self.bootstrap,
                 "group.id": self.group_id,
                 "auto.offset.reset": "earliest",
                 "enable.auto.commit": False,
+                "security.protocol": "SSL",
+                "ssl.ca.location": str(cert_dir / "ca.pem"),
+                "ssl.certificate.location": str(cert_dir / "service.cert"),
+                "ssl.key.location": str(cert_dir / "service.key"),
             }
             if consumer_config:
                 conf.update(consumer_config)

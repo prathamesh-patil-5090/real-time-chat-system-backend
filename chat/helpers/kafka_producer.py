@@ -4,15 +4,26 @@ import json
 import logging
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from app.settings import KAFKA_SERVER_URL
 from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
+
+from app.settings import BASE_DIR, KAFKA_SERVER_URL
 
 logger = logging.getLogger(__name__)
 
+# SSL certificate paths
+cert_dir = BASE_DIR / "certificates"
+
 # NOTE: Consider moving config to Django settings / env variables
-_KAFKA_CONFIG = {"bootstrap.servers": f"{KAFKA_SERVER_URL}"}
+_KAFKA_CONFIG = {
+    "bootstrap.servers": f"{KAFKA_SERVER_URL}",
+    "security.protocol": "SSL",
+    "ssl.ca.location": str(cert_dir / "ca.pem"),
+    "ssl.certificate.location": str(cert_dir / "service.cert"),
+    "ssl.key.location": str(cert_dir / "service.key"),
+}
 
 _producer = Producer(_KAFKA_CONFIG)
 _DEFAULT_TOPIC = "chat-messages"
@@ -109,6 +120,10 @@ def fetch_messages_from_kafka(
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     # Consumer used only to query committed offsets for the persistence group
@@ -116,6 +131,10 @@ def fetch_messages_from_kafka(
         "bootstrap.servers": bootstrap_servers,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
         # don't subscribe/assign this consumer; we will only use committed()
     }
 
@@ -255,12 +274,20 @@ def fetch_messages_for_conversations(
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     commit_conf = {
         "bootstrap.servers": bootstrap_servers,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     reader = Consumer(read_conf)
