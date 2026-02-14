@@ -17,6 +17,10 @@ env/
 .venv/
 .VENV/
 
+certs/ca.pem
+certs/service.cert
+certs/service.key
+
 # Django
 *.log
 staticfiles/

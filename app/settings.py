@@ -16,6 +16,11 @@ from decouple import config
 
 KAFKA_SERVER_URL = config("KAFKA_SERVER_URL")
 
+_CERTS_DIR = Path(__file__).resolve().parent.parent / "certs"
+KAFKA_SSL_CA_PATH = str(_CERTS_DIR / "ca.pem")
+KAFKA_SSL_CERT_PATH = str(_CERTS_DIR / "service.cert")
+KAFKA_SSL_KEY_PATH = str(_CERTS_DIR / "service.key")
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

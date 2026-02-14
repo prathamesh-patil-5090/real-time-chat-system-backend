@@ -6,13 +6,19 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
-from app.settings import KAFKA_SERVER_URL
+from app.settings import KAFKA_SERVER_URL, KAFKA_SSL_CA_PATH, KAFKA_SSL_CERT_PATH, KAFKA_SSL_KEY_PATH
 from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
 
 logger = logging.getLogger(__name__)
 
-# NOTE: Consider moving config to Django settings / env variables
-_KAFKA_CONFIG = {"bootstrap.servers": f"{KAFKA_SERVER_URL}"}
+# Shared Kafka config with SSL client-certificate auth for Aiven
+_KAFKA_CONFIG = {
+    "bootstrap.servers": KAFKA_SERVER_URL,
+    "security.protocol": "SSL",
+    "ssl.ca.location": KAFKA_SSL_CA_PATH,
+    "ssl.certificate.location": KAFKA_SSL_CERT_PATH,
+    "ssl.key.location": KAFKA_SSL_KEY_PATH,
+}
 
 _producer = Producer(_KAFKA_CONFIG)
 _DEFAULT_TOPIC = "chat-messages"
@@ -100,12 +106,10 @@ def fetch_messages_from_kafka(
     if max_messages <= 0:
         return results
 
-    bootstrap_servers = _KAFKA_CONFIG.get("bootstrap.servers")
-
     # Temporary consumer for reading messages (unique group so we don't affect others)
     tmp_group = f"fetch-{uuid.uuid4()}"
     read_conf = {
-        "bootstrap.servers": bootstrap_servers,
+        **_KAFKA_CONFIG,
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
@@ -113,7 +117,7 @@ def fetch_messages_from_kafka(
 
     # Consumer used only to query committed offsets for the persistence group
     commit_conf = {
-        "bootstrap.servers": bootstrap_servers,
+        **_KAFKA_CONFIG,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
         # don't subscribe/assign this consumer; we will only use committed()
@@ -247,18 +251,16 @@ def fetch_messages_for_conversations(
     if not conversation_ids:
         return out
 
-    bootstrap_servers = _KAFKA_CONFIG.get("bootstrap.servers")
-
     tmp_group = f"fetch-{uuid.uuid4()}"
     read_conf = {
-        "bootstrap.servers": bootstrap_servers,
+        **_KAFKA_CONFIG,
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
     }
 
     commit_conf = {
-        "bootstrap.servers": bootstrap_servers,
+        **_KAFKA_CONFIG,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
     }
