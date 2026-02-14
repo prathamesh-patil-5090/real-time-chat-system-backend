@@ -177,6 +177,12 @@ CHAT_KAFKA_CONSUMER_CONFIG = {
     "batch_size": config("KAFKA_CONSUMER_BATCH_SIZE", cast=int, default=100),
     "max_interval_seconds": config("KAFKA_CONSUMER_MAX_INTERVAL_SECONDS", cast=float, default=60.0),
     "poll_timeout": config("KAFKA_CONSUMER_POLL_TIMEOUT", cast=float, default=1.0),
+    "consumer_config": {
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(BASE_DIR / "certificates" / "ca.pem"),
+        "ssl.certificate.location": str(BASE_DIR / "certificates" / "service.cert"),
+        "ssl.key.location": str(BASE_DIR / "certificates" / "service.key"),
+    }
 }
 
 # CORS settings for development

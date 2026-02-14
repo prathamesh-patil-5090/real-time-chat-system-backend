@@ -4,12 +4,18 @@ import json
 import logging
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.settings import KAFKA_SERVER_URL, KAFKA_SSL_CA_PATH, KAFKA_SSL_CERT_PATH, KAFKA_SSL_KEY_PATH
 from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
 
+from app.settings import BASE_DIR, KAFKA_SERVER_URL
+
 logger = logging.getLogger(__name__)
+
+# SSL certificate paths
+cert_dir = BASE_DIR / "certificates"
 
 # Shared Kafka config with SSL client-certificate auth for Aiven
 _KAFKA_CONFIG = {
@@ -113,6 +119,10 @@ def fetch_messages_from_kafka(
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     # Consumer used only to query committed offsets for the persistence group
@@ -120,6 +130,10 @@ def fetch_messages_from_kafka(
         **_KAFKA_CONFIG,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
         # don't subscribe/assign this consumer; we will only use committed()
     }
 
@@ -257,12 +271,20 @@ def fetch_messages_for_conversations(
         "group.id": tmp_group,
         "enable.auto.commit": False,
         "auto.offset.reset": "earliest",
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     commit_conf = {
         **_KAFKA_CONFIG,
         "group.id": persist_group or "chat-consumer-group",
         "enable.auto.commit": False,
+        "security.protocol": "SSL",
+        "ssl.ca.location": str(cert_dir / "ca.pem"),
+        "ssl.certificate.location": str(cert_dir / "service.cert"),
+        "ssl.key.location": str(cert_dir / "service.key"),
     }
 
     reader = Consumer(read_conf)

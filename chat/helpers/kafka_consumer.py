@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from confluent_kafka import Consumer, KafkaError, KafkaException
@@ -37,6 +38,9 @@ class KafkaBatchConsumer:
             self._lock = threading.Lock()
             self._stop_event = threading.Event()
             self._last_flush_time = time.time()
+
+            # SSL certificate paths
+            cert_dir = BASE_DIR / "certificates"
 
             conf = {
                 "bootstrap.servers": self.bootstrap,

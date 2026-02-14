@@ -47,6 +47,11 @@ db.sqlite3-journal
 .env
 *.env
 
+# Kafka SSL Certificates (sensitive)
+certificates/*.pem
+certificates/*.cert
+certificates/*.key
+
 # Cache
 *.cache
 *.mo
