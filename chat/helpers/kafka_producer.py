@@ -15,7 +15,7 @@ from app.settings import BASE_DIR, KAFKA_SERVER_URL
 logger = logging.getLogger(__name__)
 
 # SSL certificate paths
-cert_dir = BASE_DIR / "certificates"
+cert_dir = BASE_DIR / "certs"
 
 # Shared Kafka config with SSL client-certificate auth for Aiven
 _KAFKA_CONFIG = {

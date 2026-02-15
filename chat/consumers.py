@@ -119,6 +119,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps({"error": "message_save_failed", "detail": str(exc)}))
                 return
 
+        # Resolve sender display name for immediate broadcast (so clients don't need to
+        # look it up themselves and will show correct sender name in group chats).
+        try:
+            sender_obj = db_message.sender
+            sender_name = (f"{sender_obj.first_name} {sender_obj.last_name}".strip() or sender_obj.username)
+        except Exception:
+            sender_name = "Unknown"
+
         # Broadcast to the group so all connected clients receive the new message immediately.
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -126,6 +134,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "type": "chat.message",
                 "message": message,
                 "sender_id": sender_id,
+                "sender_name": sender_name,
                 "temp_id": temp_id,
             },
         )
@@ -209,6 +218,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         out = {
             "message": event.get("message"),
             "sender_id": event.get("sender_id"),
+            "sender_name": event.get("sender_name"),
             "temp_id": event.get("temp_id"),
         }
         await self.send(text_data=json.dumps(out))

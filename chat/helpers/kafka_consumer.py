@@ -6,6 +6,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from app.settings import BASE_DIR 
 
 from confluent_kafka import Consumer, KafkaError, KafkaException
 from django.db import transaction
@@ -40,7 +41,7 @@ class KafkaBatchConsumer:
             self._last_flush_time = time.time()
 
             # SSL certificate paths
-            cert_dir = BASE_DIR / "certificates"
+            cert_dir = BASE_DIR / "certs"
 
             conf = {
                 "bootstrap.servers": self.bootstrap,

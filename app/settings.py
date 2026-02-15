@@ -179,9 +179,9 @@ CHAT_KAFKA_CONSUMER_CONFIG = {
     "poll_timeout": config("KAFKA_CONSUMER_POLL_TIMEOUT", cast=float, default=1.0),
     "consumer_config": {
         "security.protocol": "SSL",
-        "ssl.ca.location": str(BASE_DIR / "certificates" / "ca.pem"),
-        "ssl.certificate.location": str(BASE_DIR / "certificates" / "service.cert"),
-        "ssl.key.location": str(BASE_DIR / "certificates" / "service.key"),
+        "ssl.ca.location": KAFKA_SSL_CA_PATH,
+        "ssl.certificate.location": KAFKA_SSL_CERT_PATH,
+        "ssl.key.location": KAFKA_SSL_KEY_PATH,
     }
 }
 
