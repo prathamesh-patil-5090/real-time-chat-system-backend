@@ -40,7 +40,7 @@ class KafkaBatchConsumer:
             self._stop_event = threading.Event()
             self._last_flush_time = time.time()
 
-            # SSL certificate paths
+            
             cert_dir = BASE_DIR / "certs"
 
             conf = {
@@ -115,7 +115,7 @@ class KafkaBatchConsumer:
         except Exception:
             logger.exception("Unexpected error in KafkaBatchConsumer main loop.")
         finally:
-            # flush remaining messages before exit
+            
             logger.info("KafkaBatchConsumer flushing remaining messages before close.")
             self._flush_if_needed(force=True)
             try:
@@ -294,5 +294,5 @@ def stop_background_consumer() -> None:
     if thread and thread.is_alive():
         thread.join(timeout=5)
 
-# Ensure background consumer shuts down with the process
+
 atexit.register(stop_background_consumer)

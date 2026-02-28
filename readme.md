@@ -2,6 +2,8 @@
 
 ## Prerequisites
 
+torch==2.8.0
+
 Before starting, ensure you have the following installed:
 
 - Docker and Docker Compose

@@ -53,13 +53,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
 
-        # base queryset scoped to requester
         qs = Conversation.objects.filter(participants__user=user).select_related("created_by").prefetch_related(
             "participants__user",
             "messages__sender",
         ).distinct()
 
-        # optional query param ?is_group=true|false to filter personal vs group conversations
         is_group_param = None
         try:
             is_group_param = self.request.query_params.get("is_group")
@@ -84,13 +82,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             data = serializer.data
-            # Enrich with Kafka messages
             data = self._enrich_with_kafka_messages(data)
             return self.get_paginated_response(data)
 
         serializer = self.get_serializer(queryset, many=True)
         data = serializer.data
-        # Enrich with Kafka messages
         data = self._enrich_with_kafka_messages(data)
         return Response(data)
 
@@ -98,12 +94,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
         """
         Check Kafka for each conversation and update latest_message if a newer message exists.
         """
-        # Batch-fetch pending kafka messages for all conversations on the page
         conv_ids = [str(c['id']) for c in conversations_data if c.get('id') is not None]
         if not conv_ids:
             return conversations_data
 
-        # Request only the most recent pending message per conversation to keep the call small
         kafka_map = fetch_messages_for_conversations(conv_ids, max_messages_per_conversation=1)
 
         for conversation in conversations_data:
@@ -172,13 +166,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
         is_group = serializer.validated_data.get('is_group', False)
         extra_participant_ids = self._normalize_id_list(self.request.data.get("participant_ids", []))
 
-        # Validate personal chat requirements
         if not is_group:
-            # Personal chat must have exactly 1 other participant (creator + 1 other = 2 total)
             if len(extra_participant_ids) != 1:
                 raise ValidationError({"participant_ids": "Personal chats must have exactly one other participant."})
 
-            # Check for duplicate conversation between these two users
             other_user_id = extra_participant_ids[0]
             existing = Conversation.objects.filter(
                 is_group=False,
@@ -201,7 +192,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
         )
 
         for user_id in extra_participant_ids:
-            # skip adding the creator again
             if str(user_id) == str(self.request.user.id):
                 continue
             ConversationParticipant.objects.get_or_create(
@@ -276,17 +266,14 @@ class ConversationViewSet(viewsets.ModelViewSet):
         participant = get_object_or_404(ConversationParticipant, conversation=conversation, user_id=user_id)
 
         if participant.role == RoleEnum.ADMIN:
-            # Fetch requester's participant record to compare joined_at
             requester_participant = ConversationParticipant.objects.filter(conversation=conversation, user=request.user).first()
             if requester_participant is None:
                 raise PermissionDenied("Requester is not a participant in this conversation.")
 
-            # If both have join timestamps, prevent newer admin from removing an older admin
             if requester_participant.joined_at and participant.joined_at:
                 if requester_participant.joined_at > participant.joined_at:
                     raise ValidationError("A newer admin cannot remove an older admin.")
 
-            # count admins by role (not by user_id) and prevent removing the last admin
             admin_count = ConversationParticipant.objects.filter(conversation=conversation, role=RoleEnum.ADMIN).count()
             if admin_count <= 1:
                 raise ValidationError("Cannot remove the last admin from the conversation.")
@@ -447,7 +434,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_404_NOT_FOUND
                     )
 
-        # Handle PUT/PATCH request (update)
         else:
             try:
                 message = ConversationMessage.objects.get(pk=message_id, conversation=conversation)
@@ -537,7 +523,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if isinstance(ids, str):
             return [int(i.strip()) for i in ids.split(",") if i.strip()]
         if isinstance(ids, (list, tuple)):
-            # cast items to int when possible
             out = []
             for i in ids:
                 try:
@@ -561,7 +546,6 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         conversation_id = self.request.query_params.get("conversation_id")
         if not conversation_id:
             return ConversationParticipant.objects.none()
-        # Ensure requester belongs to the conversation before returning participants
         self._ensure_participant(conversation_id, self.request.user)
         return ConversationParticipant.objects.filter(conversation_id=conversation_id).select_related("user")
 
@@ -586,7 +570,6 @@ class ConversationParticipantViewSet(viewsets.ModelViewSet):
         self._ensure_admin(participant.conversation, request.user)
         return super().destroy(request, *args, **kwargs)
 
-    # helpers
     def _ensure_participant(self, conversation_id: int, user: User) -> None:
         if not ConversationParticipant.objects.filter(conversation_id=conversation_id, user=user).exists():
             raise PermissionDenied("You are not a participant in this conversation.")
@@ -609,7 +592,6 @@ class MessageReadReceiptViewSet(viewsets.ModelViewSet):
         qs = MessageReadReceipt.objects.all().select_related("message", "user")
         if message_id:
             qs = qs.filter(message_id=message_id)
-        # Limit to receipts in conversations the user participates in
         return qs.filter(message__conversation__participants__user=self.request.user).distinct()
 
     def perform_create(self, serializer):

@@ -175,7 +175,7 @@ class ProfileHolderViewSet(viewsets.ModelViewSet):
 class SearchProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
-    queryset = User.objects.all()  # Fixed typo: was "querset"
+    queryset = User.objects.all()  
 
     def list(self, request, *args, **kwargs):
         search_params = request.query_params.get("search_params")

@@ -56,7 +56,6 @@ setuptools==80.9.0
 sqlparse==0.5.3
 sympy==1.14.0
 tokenizers==0.22.0
-torch==2.8.0
 tqdm==4.67.1
 transformers==4.56.0
 Twisted==25.5.0

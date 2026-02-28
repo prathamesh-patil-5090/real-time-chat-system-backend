@@ -8,7 +8,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 class ChatTests(ChannelsLiveServerTestCase):
-    serve_static = True  # emulate StaticLiveServerTestCase
+    serve_static = True
 
     @classmethod
     def setUpClass(cls):
@@ -73,7 +73,6 @@ class ChatTests(ChannelsLiveServerTestCase):
         finally:
             self._close_all_new_windows()
 
-    # === Utility ===
 
     def _enter_chat_room(self, room_name):
         self.driver.get(self.live_server_url + "/chat/")

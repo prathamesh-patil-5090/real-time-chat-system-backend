@@ -14,10 +14,10 @@ from app.settings import BASE_DIR, KAFKA_SERVER_URL
 
 logger = logging.getLogger(__name__)
 
-# SSL certificate paths
+
 cert_dir = BASE_DIR / "certs"
 
-# Shared Kafka config with SSL client-certificate auth for Aiven
+
 _KAFKA_CONFIG = {
     "bootstrap.servers": KAFKA_SERVER_URL,
     "security.protocol": "SSL",
@@ -112,7 +112,7 @@ def fetch_messages_from_kafka(
     if max_messages <= 0:
         return results
 
-    # Temporary consumer for reading messages (unique group so we don't affect others)
+    
     tmp_group = f"fetch-{uuid.uuid4()}"
     read_conf = {
         **_KAFKA_CONFIG,
@@ -125,7 +125,7 @@ def fetch_messages_from_kafka(
         "ssl.key.location": str(cert_dir / "service.key"),
     }
 
-    # Consumer used only to query committed offsets for the persistence group
+    
     commit_conf = {
         **_KAFKA_CONFIG,
         "group.id": persist_group or "chat-consumer-group",
@@ -134,7 +134,7 @@ def fetch_messages_from_kafka(
         "ssl.ca.location": str(cert_dir / "ca.pem"),
         "ssl.certificate.location": str(cert_dir / "service.cert"),
         "ssl.key.location": str(cert_dir / "service.key"),
-        # don't subscribe/assign this consumer; we will only use committed()
+        
     }
 
     reader = Consumer(read_conf)
@@ -150,7 +150,7 @@ def fetch_messages_from_kafka(
         if not partitions:
             return results
 
-        # Determine start offsets for each partition based on committed offsets of persist_group
+        
         topic_partitions = []
         for p in partitions:
             tp = TopicPartition(t, p)
@@ -163,30 +163,30 @@ def fetch_messages_from_kafka(
                 except Exception:
                     low, high = 0, 0
 
-            # Query committed offset for persistence group
+            
             try:
                 committed = comm_consumer.committed([TopicPartition(t, p)], timeout=5.0)
                 if committed and len(committed) > 0:
                     committed_off = committed[0].offset
                     if committed_off is None or committed_off < 0:
-                        # no committed offset -> treat as nothing processed
+                        
                         committed_off = low - 1
                 else:
                     committed_off = low - 1
             except Exception:
-                # If we can't fetch committed offsets, assume none committed so start at low
+                
                 committed_off = low - 1
 
-            # pending messages start at committed_off + 1
+            
             start = max(low, committed_off + 1)
-            # if start >= high there are no pending messages in this partition
+            
             if start < high:
                 topic_partitions.append(TopicPartition(t, p, start))
 
         if not topic_partitions:
             return results
 
-        # assign reader to the computed starting offsets
+        
         reader.assign(topic_partitions)
 
         deadline = time.time() + float(timeout_seconds)
@@ -199,7 +199,7 @@ def fetch_messages_from_kafka(
                 continue
 
             try:
-                # Ensure key matches conversation_id
+                
                 raw_key = msg.key()
                 if raw_key is None:
                     continue
@@ -390,7 +390,7 @@ def fetch_messages_for_conversations(
         except Exception:
             logger.exception("Failed to close commit-offset consumer")
 
-    # Trim to per-conversation limits and return
+    
     return {k: v[:max_messages_per_conversation] for k, v in out.items()}
 
 def produce_message_update(
@@ -462,18 +462,18 @@ def find_message_in_kafka(
     pending_messages = fetch_messages_from_kafka(
         conversation_id=str(conversation_id),
         topic=topic,
-        max_messages=1000,  # Increase if you expect more pending messages
+        max_messages=1000,  
         timeout_seconds=timeout_seconds,
         persist_group=persist_group,
     )
 
-    # Search for the message by ID
+    
     for msg in pending_messages:
-        # Check if this message matches by ID
+        
         if msg.get("message_id") == message_id:
             return msg
-        # Also check the Kafka offset metadata if the message_id wasn't set
-        # (for backwards compatibility with older messages)
+        
+        
         if msg.get("id") == message_id:
             return msg
 

@@ -62,7 +62,6 @@ class ConversationMessageSerializer(serializers.ModelSerializer):
         if conversation is None:
             raise ValidationError("Conversation must be provided (view should pass it in serializer context).")
 
-        # ensure request user is participant
         user = getattr(request, 'user', None)
         if user is None or not user.is_authenticated:
             raise PermissionDenied("Authentication required to send messages.")
@@ -74,7 +73,6 @@ class ConversationMessageSerializer(serializers.ModelSerializer):
         if not is_participant:
             raise PermissionDenied("You are not a participant of this conversation.")
 
-        # reply_to validation: same conversation
         reply_to = attrs.get('reply_to')
         if reply_to is not None and reply_to.conversation_id != conversation.id:
             raise ValidationError("reply_to must belong to the same conversation.")
@@ -97,7 +95,6 @@ class ConversationMessageSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        # Note: updating Conversation.updated_at or broadcasting should be handled by the view or signals
         return message
 
 
@@ -144,10 +141,8 @@ class ConversationParticipantsSerializer(serializers.ModelSerializer):
         if user is None or not user.is_authenticated:
             raise PermissionDenied("Authentication required.")
 
-        # If role is being changed, requester must be an admin in the conversation
         new_role = validated_data.get('role')
         if new_role and new_role != instance.role:
-            # check requester is admin
             is_admin = ConversationParticipant.objects.filter(
                 conversation=instance.conversation,
                 user=user,
@@ -156,9 +151,7 @@ class ConversationParticipantsSerializer(serializers.ModelSerializer):
             if not is_admin:
                 raise PermissionDenied("Only conversation admins can change roles.")
 
-        # If trying to change someone else's muted status, ensure permission:
         if 'is_muted' in validated_data and instance.user != user:
-            # only admin may mute/unmute other users
             is_admin = ConversationParticipant.objects.filter(
                 conversation=instance.conversation,
                 user=user,
@@ -167,7 +160,6 @@ class ConversationParticipantsSerializer(serializers.ModelSerializer):
             if not is_admin:
                 raise PermissionDenied("Only conversation admins can mute/unmute other users.")
 
-        # allow member to toggle their own is_muted
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()
@@ -178,12 +170,10 @@ class ConversationParticipantsSerializer(serializers.ModelSerializer):
         For creation, view should supply 'conversation' and 'user' (or you can extend logic here).
         Keep creation responsibility in the view (so proper permissions are enforced).
         """
-        # We still provide a safe fallback if view put conversation & user in context
         conversation = self.context.get('conversation') or validated_data.get('conversation')
         user = self.context.get('user') or validated_data.get('user')
         if not conversation or not user:
             raise ValidationError("Both conversation and user must be provided by the view/context when creating participants.")
-        # Let the model/db enforce unique_together
         participant = ConversationParticipant.objects.create(
             conversation=conversation,
             user=user,
@@ -247,7 +237,6 @@ class MessageReadReceiptsSerializer(serializers.ModelSerializer):
             raise PermissionDenied("Authentication required.")
 
         message = validated_data.get('message')
-        # avoid IntegrityError by using get_or_create so duplicate receipts return the existing one
         read_receipt, created = MessageReadReceipt.objects.get_or_create(
             message=message,
             user=user
@@ -318,7 +307,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         if obj.is_group:
             return obj.name or f"Group {obj.id}"
         
-        # For one-on-one, get the other participant
         request = self.context.get('request')
         if request and request.user:
             other_participant = obj.participants.exclude(user=request.user).select_related('user').first()
@@ -365,13 +353,11 @@ class ConversationSerializer(serializers.ModelSerializer):
             return 0
         
         if participant.last_read_message:
-            # Count messages after the last read message
             unread = obj.messages.filter(
                 created_at__gt=participant.last_read_message.created_at
             ).exclude(sender=request.user).count()
             return unread
         else:
-            # No message has been read yet, count all messages except user's own
             return obj.messages.exclude(sender=request.user).count()
 
     def validate(self, attrs):
@@ -386,7 +372,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         if is_group and not name:
             raise ValidationError({"name": "Group conversations must have a name."})
         
-        # For personal chats, clear the name (it will be derived from participants)
         if not is_group:
             attrs['name'] = None
         
@@ -410,7 +395,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         """
         validated_data.pop('created_by', None)
         
-        # For personal chats, don't allow name updates
         if not instance.is_group:
             validated_data.pop('name', None)
         

@@ -8,7 +8,7 @@ from chat.routing import websocket_urlpatterns
 from chat.token_auth_middleware import JWTAuthMiddleware
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
-# Initialize Django ASGI application early
+
 django_asgi_app = get_asgi_application()
 
 
