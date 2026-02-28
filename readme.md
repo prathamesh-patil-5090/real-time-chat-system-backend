@@ -18,6 +18,13 @@ To set up Kafka using Docker, follow these steps:
 2. Navigate to the `backend` directory.
 3. Use Docker Compose to start the Kafka services. This will pull the necessary images and set up the Kafka broker.
 
+> **Optional: Using Aiven Kafka**
+>
+> - If you prefer a managed Kafka instance, you can log in to Aiven and create a Kafka service.
+> - Download the client certificates from the Aiven dashboard and place them in the `backend/certs` folder (e.g. `service.cert`, `service.key`, `ca.pem`).
+> - Update the `KAFKA_SERVER_URL` variable in your `.env` (or `.env.example`) to point to the Aiven Kafka URI (e.g. `your-service-name.aivencloud.com:9092`).
+> - Make sure your Django settings or Kafka helper code uses SSL and loads the certificates from the `certs` directory.
+
 ## Starting the Kafka Server
 
 In one terminal, perform the following steps:
